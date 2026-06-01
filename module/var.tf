@@ -85,12 +85,6 @@ variable "write_role_arns" {
   default     = []
 }
 
-variable "delete_role_arns" {
-  description = "IAM role ARNs that can delete objects."
-  type        = list(string)
-  default     = []
-}
-
 variable "admin_role_arns" {
   description = "IAM role ARNs that should receive full bucket access. When using aws:kms, these roles also need matching KMS administrative or usage permissions on the referenced key."
   type        = list(string)

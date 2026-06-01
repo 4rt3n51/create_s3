@@ -4,7 +4,6 @@ locals {
   has_bucket_policy = (
     length(var.read_role_arns) > 0 ||
     length(var.write_role_arns) > 0 ||
-    length(var.delete_role_arns) > 0 ||
     length(var.admin_role_arns) > 0
   )
   policy_statements = [
