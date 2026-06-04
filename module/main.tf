@@ -1,6 +1,6 @@
 locals {
   normalized_bucket_base = substr(trim(replace(lower(var.bucket_name), "/[^a-z0-9-]/", "-"), "-"), 0, 47)
-  final_bucket_name      = "${local.normalized_bucket_base}-${formatdate("YYYYMMDD-HHMMSS", time_static.created.rfc3339)}"
+  final_bucket_name      = "${local.normalized_bucket_base}-${formatdate("YYYYMMDD-HHMM", time_static.created.rfc3339)}"
 }
 
 resource "time_static" "created" {}
