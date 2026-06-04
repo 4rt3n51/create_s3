@@ -99,6 +99,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "aes256" {
   }
 }
 
+resource "aws_kms_key" "this" {
+  count                   = var.encryption_type == "aws:kms" ? 1 : 0
+  description             = "KMS key for S3 bucket"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "kms" {
   count  = var.encryption_type == "aws:kms" ? 1 : 0
   bucket = aws_s3_bucket.this.id
