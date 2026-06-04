@@ -36,21 +36,7 @@ variable "encryption_type" {
   }
 }
 
-variable "kms_key_id" {
-  description = "KMS key ID or ARN to use when encryption_type is aws:kms."
-  type        = string
-  default     = null
 
-  validation {
-    condition     = var.encryption_type != "aws:kms" || var.kms_key_id != null
-    error_message = "kms_key_id must be provided when encryption_type is aws:kms."
-  }
-
-  validation {
-    condition     = var.encryption_type == "aws:kms" || var.kms_key_id == null
-    error_message = "kms_key_id must be null when encryption_type is AES256."
-  }
-}
 
 variable "lifecycle_rules" {
   description = "Lifecycle rules to apply to the bucket."
@@ -83,3 +69,8 @@ variable "enable_logging" {
     error_message = "enable_logging must be 'server-access-logging', 'cloudtrail-logging', 'both', or empty string to disable."
   }
 }
+
+
+
+
+

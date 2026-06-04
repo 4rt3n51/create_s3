@@ -40,16 +40,7 @@ variable "encryption_type" {
   }
 }
 
-variable "enable_logging" {
-  description = "Enable S3 logging. Supported values: 'server-access-logging', 'cloudtrail-logging', 'both'. Leave empty to disable."
-  type        = string
-  default     = ""
 
-  validation {
-    condition     = var.enable_logging == "" || contains(["server-access-logging", "cloudtrail-logging", "both"], var.enable_logging)
-    error_message = "enable_logging must be 'server-access-logging', 'cloudtrail-logging', 'both', or empty string to disable."
-  }
-}
 
 variable "lifecycle_rules" {
   description = "Lifecycle rules to apply to the bucket."
@@ -72,26 +63,19 @@ variable "lifecycle_rules" {
   default = []
 }
 
-variable "read_role_arns" {
-  description = "IAM role ARNs that can list the bucket and read objects."
-  type        = list(string)
-  default     = []
+variable "enable_logging" {
+  description = "Enable S3 logging. Supported values: 'server-access-logging', 'cloudtrail-logging', 'both'. Leave empty to disable."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.enable_logging == "" || contains(["server-access-logging", "cloudtrail-logging", "both"], var.enable_logging)
+    error_message = "enable_logging must be 'server-access-logging', 'cloudtrail-logging', 'both', or empty string to disable."
+  }
 }
 
-variable "write_role_arns" {
-  description = "IAM role ARNs that can upload objects."
-  type        = list(string)
-  default     = []
-}
 
-variable "delete_role_arns" {
-  description = "IAM role ARNs that can delete objects."
-  type        = list(string)
-  default     = []
-}
 
-variable "admin_role_arns" {
-  description = "IAM role ARNs that should receive full bucket access."
-  type        = list(string)
-  default     = []
-}
+
+
+

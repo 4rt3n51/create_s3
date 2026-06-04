@@ -1,6 +1,66 @@
 locals {
   normalized_bucket_base = substr(trim(replace(lower(var.bucket_name), "/[^a-z0-9-]/", "-"), "-"), 0, 47)
   final_bucket_name      = "${local.normalized_bucket_base}-${formatdate("YYYYMMDD-HHMM", time_static.created.rfc3339)}"
+
+    has_bucket_policy = true
+
+    policy_statements = [
+    {
+      sid        = "AllowReadAccess"
+      principals = [aws_iam_role.read.arn]
+
+      actions = [
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:ListBucketMultipartUploads",
+        "s3:GetObjectVersion"
+      ]
+
+      resource_type = "both"
+    },
+
+    {
+      sid        = "AllowWriteAccess"
+      principals = [aws_iam_role.write.arn]
+
+      actions = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts",
+        "s3:GetBucketLocation",
+        "s3:GetObjectVersion",
+        "s3:PutObjectVersionAcl"
+      ]
+
+      resource_type = "both"
+    },
+
+    {
+      sid        = "AllowOperatorAccess"
+      principals = [aws_iam_role.operator.arn]
+
+      actions = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketAcl",
+        "s3:PutBucketAcl",
+        "s3:GetBucketPolicy",
+        "s3:PutBucketPolicy",
+        "s3:GetBucketLifecycle",
+        "s3:PutBucketLifecycle",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning"
+      ]
+
+      resource_type = "both"
+    }
+  ]
 }
 
 resource "time_static" "created" {}
