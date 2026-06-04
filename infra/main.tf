@@ -5,8 +5,8 @@ module "s3_bucket" {
   environment     = var.environment
   versioning      = var.enable_versioning
   encryption_type = var.encryption_type
-  kms_key_id      = var.kms_key_id
   lifecycle_rules = var.lifecycle_rules
+    enable_logging  = var.enable_logging
 
   tags = var.tags
 }

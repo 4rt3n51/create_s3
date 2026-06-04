@@ -40,19 +40,14 @@ variable "encryption_type" {
   }
 }
 
-variable "kms_key_id" {
-  description = "KMS key ID or ARN to use when encryption_type is aws:kms."
+variable "enable_logging" {
+  description = "Enable S3 logging. Supported values: 'server-access-logging', 'cloudtrail-logging', 'both'. Leave empty to disable."
   type        = string
-  default     = null
+  default     = ""
 
   validation {
-    condition     = var.encryption_type != "aws:kms" || var.kms_key_id != null
-    error_message = "kms_key_id must be provided when encryption_type is aws:kms."
-  }
-
-  validation {
-    condition     = var.encryption_type == "aws:kms" || var.kms_key_id == null
-    error_message = "kms_key_id must be null when encryption_type is AES256."
+    condition     = var.enable_logging == "" || contains(["server-access-logging", "cloudtrail-logging", "both"], var.enable_logging)
+    error_message = "enable_logging must be 'server-access-logging', 'cloudtrail-logging', 'both', or empty string to disable."
   }
 }
 

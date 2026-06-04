@@ -73,20 +73,13 @@ variable "lifecycle_rules" {
   default = []
 }
 
-variable "read_role_arns" {
-  description = "IAM role ARNs that can list the bucket and read objects. When using aws:kms, these roles also need KMS decrypt access on the referenced key."
-  type        = list(string)
-  default     = []
-}
+variable "enable_logging" {
+  description = "Enable S3 logging. Supported values: 'server-access-logging', 'cloudtrail-logging', 'both'. Set to empty string or null to disable."
+  type        = string
+  default     = ""
 
-variable "write_role_arns" {
-  description = "IAM role ARNs that can upload objects. When using aws:kms, these roles also need KMS encrypt and data-key permissions on the referenced key."
-  type        = list(string)
-  default     = []
-}
-
-variable "admin_role_arns" {
-  description = "IAM role ARNs that should receive full bucket access. When using aws:kms, these roles also need matching KMS administrative or usage permissions on the referenced key."
-  type        = list(string)
-  default     = []
+  validation {
+    condition     = var.enable_logging == "" || contains(["server-access-logging", "cloudtrail-logging", "both"], var.enable_logging)
+    error_message = "enable_logging must be 'server-access-logging', 'cloudtrail-logging', 'both', or empty string to disable."
+  }
 }

@@ -32,10 +32,4 @@ lifecycle_rules = [
   }
 ]
 
-read_role_arns = [
-  "arn:aws:iam::763487052879:role/readonly"
-]
-
-admin_role_arns = [
-  "arn:aws:iam::763487052879:role/adminrole"
-]
+enable_logging = "both"

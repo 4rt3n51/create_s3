@@ -1,31 +1,6 @@
 locals {
   normalized_bucket_base = substr(trim(replace(lower(var.bucket_name), "/[^a-z0-9-]/", "-"), "-"), 0, 47)
   final_bucket_name      = "${local.normalized_bucket_base}-${formatdate("YYYYMMDD-HHMMSS", time_static.created.rfc3339)}"
-  has_bucket_policy = (
-    length(var.read_role_arns) > 0 ||
-    length(var.write_role_arns) > 0 ||
-    length(var.admin_role_arns) > 0
-  )
-  policy_statements = [
-    {
-      sid         = "AllowReadBucketMetadata"
-      principals  = var.read_role_arns
-      actions     = ["s3:GetBucketLocation", "s3:ListBucket"]
-      resource_type = "bucket"
-    },
-    {
-      sid         = "AllowWriteBucketMetadata"
-      principals  = var.write_role_arns
-      actions     = ["s3:GetBucketLocation", "s3:ListBucketMultipartUploads"]
-      resource_type = "bucket"
-    },
-    {
-      sid         = "AllowAdminAccess"
-      principals  = var.admin_role_arns
-      actions     = ["s3:*"]
-      resource_type = "both"
-    }
-  ]
 }
 
 resource "time_static" "created" {}
@@ -138,10 +113,11 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "kms" {
   }
 }
 
-data "aws_iam_policy_document" "bucket_policy" {
-  count = local.has_bucket_policy ? 1 : 0
+# =========================
+# BUCKET POLICY
+# =========================
 
-  # Deny any request sent without TLS, regardless of the allow statements below.
+data "aws_iam_policy_document" "bucket_policy" {
   statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"
@@ -164,31 +140,228 @@ data "aws_iam_policy_document" "bucket_policy" {
       values   = ["false"]
     }
   }
+}
 
-  # Consolidated allow statements generated from local.policy_statements.
-  dynamic "statement" {
-    for_each = [for s in local.policy_statements : s if length([for id in s.principals : id if length(trimspace(id)) > 0 && startswith(id, "arn:aws:iam::")]) > 0]
-    content {
-      sid = statement.value.sid
+resource "aws_s3_bucket_policy" "this" {
+  bucket = aws_s3_bucket.this.id
+  policy = data.aws_iam_policy_document.bucket_policy.json
+}
 
-      principals {
-        type = "AWS"
-        identifiers = [for id in statement.value.principals : id if length(trimspace(id)) > 0 && startswith(id, "arn:aws:iam::")]
+resource "aws_s3_bucket_public_access_block" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# =========================
+# S3 LOGGING
+# =========================
+
+resource "aws_s3_bucket" "logs" {
+  count  = var.enable_logging != "" ? 1 : 0
+  bucket = "${local.final_bucket_name}-logs"
+
+  tags = merge(var.tags, {
+    Name        = "${local.final_bucket_name}-logs"
+    Environment = var.environment
+  })
+}
+
+resource "aws_s3_bucket_versioning" "logs" {
+  count  = var.enable_logging != "" ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+
+  versioning_configuration {
+    status = "Suspended"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "logs" {
+  count  = var.enable_logging != "" ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  count  = var.enable_logging != "" ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_logging" "this" {
+  count  = contains(["server-access-logging", "both"], var.enable_logging) ? 1 : 0
+  bucket = aws_s3_bucket.this.id
+
+  target_bucket = aws_s3_bucket.logs[0].id
+  target_prefix = "server-access-logs/"
+}
+
+# =========================
+# CloudTrail Logging
+# =========================
+
+resource "aws_iam_role" "cloudtrail" {
+  count = contains(["cloudtrail-logging", "both"], var.enable_logging) ? 1 : 0
+  name  = "${local.final_bucket_name}-cloudtrail-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "cloudtrail.amazonaws.com"
       }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
 
-      actions = statement.value.actions
+resource "aws_iam_policy" "cloudtrail" {
+  count = contains(["cloudtrail-logging", "both"], var.enable_logging) ? 1 : 0
+  name  = "${local.final_bucket_name}-cloudtrail-policy"
 
-      resources = statement.value.resource_type == "bucket" ? [aws_s3_bucket.this.arn] : (
-        statement.value.resource_type == "objects" ? ["${aws_s3_bucket.this.arn}/*"] : [aws_s3_bucket.this.arn, "${aws_s3_bucket.this.arn}/*"]
-      )
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:PutObject"
+      ]
+      Resource = "${aws_s3_bucket.logs[0].arn}/cloudtrail-logs/*"
+      Condition = {
+        StringEquals = {
+          "s3:x-amz-acl" = "bucket-owner-full-control"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cloudtrail" {
+  count      = contains(["cloudtrail-logging", "both"], var.enable_logging) ? 1 : 0
+  role       = aws_iam_role.cloudtrail[0].name
+  policy_arn = aws_iam_policy.cloudtrail[0].arn
+}
+
+data "aws_iam_policy_document" "logs_bucket_policy" {
+  count = var.enable_logging != "" ? 1 : 0
+
+  statement {
+    sid    = "AWSCloudTrailAclCheck"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions = ["s3:GetBucketAcl"]
+
+    resources = [aws_s3_bucket.logs[0].arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${local.final_bucket_name}-trail"]
+    }
+  }
+
+  statement {
+    sid    = "AWSCloudTrailWrite"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions = ["s3:PutObject"]
+
+    resources = ["${aws_s3_bucket.logs[0].arn}/cloudtrail-logs/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+
+  statement {
+    sid    = "DenyInsecureTransport"
+    effect = "Deny"
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions = ["s3:*"]
+
+    resources = [
+      aws_s3_bucket.logs[0].arn,
+      "${aws_s3_bucket.logs[0].arn}/*"
+    ]
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "logs" {
+  count  = var.enable_logging != "" ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+  policy = data.aws_iam_policy_document.logs_bucket_policy[0].json
+}
+
+resource "aws_cloudtrail" "this" {
+  count                     = contains(["cloudtrail-logging", "both"], var.enable_logging) ? 1 : 0
+  name                      = "${local.final_bucket_name}-trail"
+  s3_bucket_name            = aws_s3_bucket.logs[0].id
+  is_multi_region_trail     = false
+  include_global_service_events = true
+  depends_on                = [aws_s3_bucket_policy.logs]
+  enable_log_file_validation = true
+
+  s3_key_prefix = "cloudtrail-logs"
+
+  event_selector {
+    read_write_type           = "All"
+    include_management_events = true
+
+    data_resource {
+      type   = "AWS::S3::Object"
+      values = ["${aws_s3_bucket.this.arn}/*"]
+    }
+
+    data_resource {
+      type   = "AWS::S3::Bucket"
+      values = [aws_s3_bucket.this.arn]
     }
   }
 }
 
 resource "aws_s3_bucket_policy" "this" {
-  count  = local.has_bucket_policy ? 1 : 0
   bucket = aws_s3_bucket.this.id
-  policy = data.aws_iam_policy_document.bucket_policy[0].json
+  policy = data.aws_iam_policy_document.bucket_policy.json
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
