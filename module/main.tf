@@ -561,10 +561,5 @@ resource "aws_cloudtrail" "this" {
       type   = "AWS::S3::Object"
       values = ["${aws_s3_bucket.this.arn}/*"]
     }
-
-    data_resource {
-      type   = "AWS::S3::Bucket"
-      values = [aws_s3_bucket.this.arn]
-    }
   }
 }
