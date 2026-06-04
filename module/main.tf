@@ -114,6 +114,149 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "kms" {
 }
 
 # =========================
+# IAM ROLES
+# =========================
+
+resource "aws_iam_role" "read" {
+  name = "${local.final_bucket_name}-read"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { AWS = "arn:aws:iam::763487052879:root" }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role" "write" {
+  name = "${local.final_bucket_name}-write"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { AWS = "arn:aws:iam::763487052879:root" }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role" "operator" {
+  name = "${local.final_bucket_name}-operator"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { AWS = "arn:aws:iam::763487052879:root" }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+# =========================
+# IAM POLICIES
+# =========================
+
+resource "aws_iam_policy" "read" {
+  name = "${local.final_bucket_name}-read-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:ListBucketMultipartUploads",
+        "s3:GetObjectVersion"
+      ]
+      Resource = [
+        aws_s3_bucket.this.arn,
+        "${aws_s3_bucket.this.arn}/*"
+      ]
+    }]
+  })
+}
+
+resource "aws_iam_policy" "write" {
+  name = "${local.final_bucket_name}-write-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts",
+        "s3:GetBucketLocation",
+        "s3:GetObjectVersion",
+        "s3:PutObjectVersionAcl"
+      ]
+      Resource = [
+        aws_s3_bucket.this.arn,
+        "${aws_s3_bucket.this.arn}/*"
+      ]
+    }]
+  })
+}
+
+resource "aws_iam_policy" "operator" {
+  name = "${local.final_bucket_name}-operator-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketAcl",
+        "s3:PutBucketAcl",
+        "s3:GetBucketPolicy",
+        "s3:PutBucketPolicy",
+        "s3:GetBucketLifecycle",
+        "s3:PutBucketLifecycle",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning"
+      ]
+      Resource = [
+        aws_s3_bucket.this.arn,
+        "${aws_s3_bucket.this.arn}/*"
+      ]
+    }]
+  })
+}
+
+# =========================
+# ATTACHMENTS
+# =========================
+
+resource "aws_iam_role_policy_attachment" "read" {
+  role       = aws_iam_role.read.name
+  policy_arn = aws_iam_policy.read.arn
+}
+
+resource "aws_iam_role_policy_attachment" "write" {
+  role       = aws_iam_role.write.name
+  policy_arn = aws_iam_policy.write.arn
+}
+
+resource "aws_iam_role_policy_attachment" "operator" {
+  role       = aws_iam_role.operator.name
+  policy_arn = aws_iam_policy.operator.arn
+}
+
+# =========================
 # BUCKET POLICY
 # =========================
 
