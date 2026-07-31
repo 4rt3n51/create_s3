@@ -17,10 +17,7 @@ variable "environment" {
 variable "tags" {
   description = "Tags to apply to the bucket."
   type        = map(string)
-  default = {
-    Owner   = "artenis"
-    Project = "s3-bucket"
-  }
+  default = {}
 }
 
 variable "enable_versioning" {

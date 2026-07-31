@@ -191,7 +191,7 @@ resource "aws_iam_role" "read" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { AWS = "arn:aws:iam::763487052879:root" }
+      Principal = { AWS = "arn:aws:iam::992382750898:root" }
       Action = "sts:AssumeRole"
     }]
   })
@@ -204,7 +204,7 @@ resource "aws_iam_role" "write" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { AWS = "arn:aws:iam::763487052879:root" }
+      Principal = { AWS = "arn:aws:iam::992382750898:root" }
       Action = "sts:AssumeRole"
     }]
   })
@@ -217,7 +217,7 @@ resource "aws_iam_role" "operator" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { AWS = "arn:aws:iam::763487052879:root" }
+      Principal = { AWS = "arn:aws:iam::992382750898:root" }
       Action = "sts:AssumeRole"
     }]
   })
