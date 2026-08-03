@@ -1,16 +1,11 @@
 variable "region" {
   description = "AWS region where the bucket will be created."
   type        = string
-  default     = "us-east-1"
+  default     = "eu-central-1"
 }
 
 variable "bucket_name" {
   description = "Base bucket name provided by the user. The module appends the creation date and random suffix."
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment tag for this deployment."
   type        = string
 }
 
@@ -27,17 +22,16 @@ variable "enable_versioning" {
 }
 
 variable "encryption_type" {
-  description = "S3 encryption type. Supported values are AES256 and aws:kms."
+  description = "S3 encryption type."
   type        = string
-  default     = "AES256"
-
-  validation {
-    condition     = contains(["AES256", "aws:kms"], var.encryption_type)
-    error_message = "encryption_type must be either AES256 or aws:kms."
-  }
+  default     = "aws:kms"
 }
 
-
+variable "kms_key_arn" {
+  description = "Optional ARN of the AWS KMS key to use for S3 server-side encryption."
+  type        = string
+  default     = null
+}
 
 variable "lifecycle_rules" {
   description = "Lifecycle rules to apply to the bucket."
@@ -57,18 +51,34 @@ variable "lifecycle_rules" {
     noncurrent_expiration_days             = optional(number)
     abort_incomplete_multipart_upload_days = optional(number)
   }))
-  default = []
+  default = [{
+    id      = "general-retention"
+    enabled = true
+    current_transitions = [
+      {
+        days          = 30
+        storage_class = "STANDARD_IA"
+      },
+      {
+        days          = 90
+        storage_class = "GLACIER_IR"
+      }
+    ]
+    noncurrent_transitions = [
+      {
+        noncurrent_days = 30
+        storage_class   = "STANDARD_IA"
+      }
+    ]
+    noncurrent_expiration_days             = 180
+    abort_incomplete_multipart_upload_days = 7
+  }]
 }
 
 variable "enable_logging" {
   description = "Enable S3 logging. Supported values: 'server-access-logging', 'cloudtrail-logging', 'both'. Leave empty to disable."
   type        = string
-  default     = ""
-
-  validation {
-    condition     = var.enable_logging == "" || contains(["server-access-logging", "cloudtrail-logging", "both"], var.enable_logging)
-    error_message = "enable_logging must be 'server-access-logging', 'cloudtrail-logging', 'both', or empty string to disable."
-  }
+  default     = "both"
 }
 
 

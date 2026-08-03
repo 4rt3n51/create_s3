@@ -74,7 +74,6 @@ resource "aws_s3_bucket" "this" {
 
   tags = merge(var.tags, {
     Name        = local.final_bucket_name
-    Environment = var.environment
   })
 }
 
@@ -148,22 +147,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   }
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "aes256" {
-  count  = var.encryption_type == "AES256" ? 1 : 0
-  bucket = aws_s3_bucket.this.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_kms_key" "this" {
-  count                   = var.encryption_type == "aws:kms" ? 1 : 0
-  description             = "KMS key for S3 bucket"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
+locals {
+  default_kms_key_alias = "alias/rbal-test-${data.aws_caller_identity.current.account_id}-cmk"
+  bucket_kms_key_arn    = var.kms_key_arn != null ? var.kms_key_arn : local.default_kms_key_alias
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "kms" {
@@ -175,7 +161,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "kms" {
 
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.this[0].arn
+      kms_master_key_id = local.bucket_kms_key_arn
     }
   }
 }
@@ -191,7 +177,7 @@ resource "aws_iam_role" "read" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { AWS = "arn:aws:iam::992382750898:root" }
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
       Action = "sts:AssumeRole"
     }]
   })
@@ -204,7 +190,7 @@ resource "aws_iam_role" "write" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { AWS = "arn:aws:iam::992382750898:root" }
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
       Action = "sts:AssumeRole"
     }]
   })
@@ -217,7 +203,7 @@ resource "aws_iam_role" "operator" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { AWS = "arn:aws:iam::992382750898:root" }
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
       Action = "sts:AssumeRole"
     }]
   })
@@ -376,7 +362,6 @@ resource "aws_s3_bucket" "logs" {
 
   tags = merge(var.tags, {
     Name        = "${local.final_bucket_name}-logs"
-    Environment = var.environment
   })
 }
 
