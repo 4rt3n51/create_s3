@@ -1,9 +1,9 @@
 # Authors
 
-Artenis Islami
-Fiona Metaj
-Kei Paravani
-Mario Leka
+- Artenis Islami
+- Fiona Metaj
+- Kei Paravani
+- Mario Leka
 
 # S3 Bucket Terraform Project
 
